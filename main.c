@@ -8,38 +8,174 @@
 
   @brief	
 *******************************************************************************/
-#include <unistd.h>
-#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <math.h>
+#include <unistd.h>
 
 #define LIMITE 100
 
-char* split(char arreglo[]){ //Separador para obtener los valores de las variables
+void split(char arreglo[]){ //Separador para obtener los valores de las variables
 
 	strtok(arreglo,"\n"); //Eliminamos el salto de línea
 	
 	char delimitador[] = "=";
-	char *variable;
+	char *variable; //aqui guardaremos el dato que nos interesa
         char *token = strtok(arreglo, delimitador); //Divimos por el delimitador '='
         if(token != NULL){
-		
-            	token = strtok(NULL, delimitador);//Seguimos llamando a la función para acceder al segundo token que es el valor
-		 
+            	token = strtok(NULL, delimitador);//Seguimos llamando a la función para acceder al segundo token que es el valor que nos interesa
 		variable = token;
           	printf("Token: %s\n", token);
-		
          }
-	return variable;
+	
+	int tamano = strlen(variable);
+	for(int i = 0; i < tamano; i++){
+		arreglo[i] = *variable;
+		variable++;
+	}
 
+	
 }// end of split
+
+ 
+
+int calcularBits(int bits,char sufijo[]){
+	int exp = 0;
+	exp = log2(bits);
+  if(strncmp(sufijo,"GB",strlen(sufijo)) == 0){
+    bits = exp + 30;   
+  }else if(strncmp(sufijo,"MB",strlen(sufijo)) == 0){
+    bits = exp + 20;
+  }else if(strncmp(sufijo,"KB",strlen(sufijo)) == 0){
+    bits = exp + 10;
+  }else {
+    bits =  exp;
+  }
+
+  return bits;
+}// end of calcular Bits
+
+void obtenerValor(char numero[], char sufijo[], char fuente[]){
+  int tamano = strlen(fuente);
+  for(int i = 0; i < tamano; i++ ){
+    if(isdigit(fuente[i]) != 0 ){
+      numero[i] = fuente[i];
+    }
+    else {   
+      strcat(sufijo, &fuente[i] );
+      break;
+    }
+
+  }
+
+}//end of obtenerValor
+
+void referenceString(char reference[], int offset,char rString[]){
+  char delimitador[] = ",";
+  int number; //variable auxiliar
+  char *token = strtok(reference,delimitador);
+  int i = 0;
+  while(token != NULL){
+    number = atoi(token);
+    char n[10] = "";
+    int div = number/offset;//division referencia/offset
+    token = strtok(NULL,delimitador);
+    snprintf(n, 10,"%d",div); //conbierte la division en String
+    rString[i] = n[0]; //Almacenamos la cadena
+    i+=1;
+    
+  }
+  
+}//end of referenceString
+
+void calculoDirecciones(char las[],char pas[],char Loffset[], char Lpsize[],char pref[]){ //Función para calcular el Logical Address Structure, Physical Address, Offset and size page table
+
+	char numero[100] ="" ;
+  char sufijo[100] = "";
+
+  obtenerValor(numero,sufijo,las);
+
+  char numOffset[100] = "";
+  char sufijoOffset[100] = "";
+
+  obtenerValor(numOffset,sufijoOffset,Loffset);
+
+  char numPAS[100] = "";
+  char sufijoPAS[100] = "";
+
+  obtenerValor(numPAS,sufijoPAS,pas);
+ 
+  char psize[100] = "";
+  char sufProccess[100] = "";
+
+  obtenerValor(psize,sufProccess,Lpsize);
+
+
+  int bits = calcularBits(atoi(numero),sufijo);
+  int offset = calcularBits(atoi(numOffset),sufijoOffset);
+  int bPAS = calcularBits(atoi(numPAS),sufijoPAS);  
+  printf("\n\n!--------------DIRECCIÓN LÓGICA DE MEMORIA--------------!\n\n");
+  printf("El tamaño de la dirección virtual es de %s --> %d bits \n",las, bits);
+  printf("El tamaño del offset es: %d\n", offset);
+  printf("LAS: [    p: %d bits    |     o: %d bits     ]\n",(bits-offset),offset);
+
+
+  printf("\n\n!--------------DIRECCIÓN FÍSICA DE MEMORIA--------------!\n\n");
+  printf("El tamaño de la dirección física es de %s --> %d bits \n",pas, bPAS);
+  printf("PAS: [    f: %d bits    |     o: %d bits     ]\n",(bPAS-offset),offset);
+
+  printf("\n\n!--------------MÁXIMO NÚMERO DE ENTRADAS--------------!\n\n");
+  
+  long pte = pow(2,(bits - offset));
+  printf("Máximo número de entradas en la tabla de páginas 2x10^%d = %ld páginas \n",(bits - offset),pte);
+
+  printf("\n\n!--------------MÁXIMO NÚMERO DE FRAMES--------------!\n\n");
+  
+  long nof = pow(2,(bPAS - offset));
+  printf("Máximo número de frames en la memoria física 2x10^%d = %ld frames \n",(bPAS - offset),nof);
+  
+  
+  printf("\n\n!--------------TAMAÑO DE LA TABLA DE PÁGINA--------------!\n\n");
+  
+  float entradas = atoi(psize)/atoi(numOffset);
+  if(atoi(psize)%atoi(numOffset) != 0){
+    entradas +=1;
+  }
+  printf("entradas del proceso: %.1f páginas\n",entradas);
+  printf("\n\n!--------------PÁGINAS DEL PROCESO VÁLIDAS--------------!\n\n");
+
+  int n = 0;
+  int total = 0;
+  while(total<entradas){
+    total = pow(2,n);
+    n +=1;
+  }
+
+  printf("Entradas totales: %d\nEntradas válidas del proceso: %.2f \n", total,entradas);
+  printf("Entradas inválidas: %.1f\n",(total - entradas));
+
+  printf("\n\n!--------------REFERENCE STRING--------------!\n\n");
+  printf("Referencia de memoria: [ %s ]\n",pref);
+  char rString[] = "";
+  referenceString(pref,atoi(numOffset),rString);
+  printf("Reference String: [ %s ]\n",rString);
+
+  printf("\n\n!--------------PAGE TABLE OUTPUT --------------!\n\n");
+
+
+}//End of calculoDirecciones
+
+
+
+
 
 
 int main(int argc, char** argv){
 	
 	FILE *fp;
 
-	char caracteres[100];
  		
  	char comentario1[LIMITE]; char LAS[LIMITE];
 	char PAS[LIMITE]; char pagesize[LIMITE];
@@ -75,33 +211,23 @@ int main(int argc, char** argv){
         fclose(fp);
 
 /** Variables necesarias para el cálculo**/
-	char *LASvalor;//el valor de la variable LAS
-	char *PASvalor;
-	char *pagesizeValor;
-	char *pnameValor;
-	char *psizeValor;
-	char *prefValor;
-	char *algoritmoValor;
-	char *pageframesValor;
 	
-	LASvalor = split(LAS);
-	PASvalor = split(PAS);
-	pagesizeValor = split(pagesize);
-	pnameValor = split(pname);
-	psizeValor = split(psize);
-	prefValor = split(pref);
-	algoritmoValor = split(algoritmo);
-	pageframesValor = split(pageframes);
+	split(LAS);
+	split(PAS);
+	split(pagesize);
+	split(pname);
+	split(psize);
+	split(pref);
+	split(algoritmo);
+	split(pageframes);
 	
+	printf("%s \n",LAS);	
+	printf("%s \n",PAS);	
+	printf("%s \n",pagesize);	
+	printf("%s \n",pref);
 
 
-	printf("valor: %s\n",LASvalor);
-	printf("valor: %s\n",PASvalor);
-	printf("valor: %s\n",pagesizeValor);
-	printf("valor: %s\n",pnameValor);
-	printf("valor: %s\n",psizeValor);
-	printf("valor: %s\n",algoritmoValor);
-	printf("valor: %s\n",pageframesValor);
+	calculoDirecciones(LAS,PAS,pagesize,psize,pref);
 
 	return 0;
 
