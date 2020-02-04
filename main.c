@@ -26,16 +26,18 @@ void split(char arreglo[]){ //Separador para obtener los valores de las variable
         char *token = strtok(arreglo, delimitador); //Divimos por el delimitador '='
         if(token != NULL){
             	token = strtok(NULL, delimitador);//Seguimos llamando a la función para acceder al segundo token que es el valor que nos interesa
-		variable = token;
+		variable =token;
           	printf("Token: %s\n", token);
          }
-	
 	int tamano = strlen(variable);
-	for(int i = 0; i < tamano; i++){
-		arreglo[i] = *variable;
+	for(int i=0;i < tamano;i++){
+		arreglo[i]= *variable;
 		variable++;
+		
 	}
+	
 
+	
 	
 }// end of split
 
@@ -90,7 +92,199 @@ void referenceString(char reference[], int offset,char rString[]){
   
 }//end of referenceString
 
-void calculoDirecciones(char las[],char pas[],char Loffset[], char Lpsize[],char pref[]){ //Función para calcular el Logical Address Structure, Physical Address, Offset and size page table
+void FIFO(int nEntradas, char rString[], int nFrames){
+int i,j,frame[10],k,avail,count=0;
+int a[1024];
+a[0]=0;
+for(int m = 0; m<strlen(rString);m++){
+  a[m+1] = (rString[m]);
+}
+
+for(i=0;i<nFrames;i++){
+  frame[i]= -1;
+}
+  j=0;
+  printf("ref string\t page frames\n");
+for(i=1;i<=nEntradas;i++){
+  printf("\t%c\t\t",a[i]);
+  avail=0;
+  for(k=0;k<nFrames;k++){
+    if(frame[k]==a[i])
+      avail=1;
+  }
+    if (avail==0){
+      frame[j]=a[i];
+      j=(j+1)%nFrames;
+      count++;
+      for(k=0;k<nFrames;k++){
+      printf("%c\t",frame[k]);
+      }
+}
+      printf("\n");
+}
+
+int hits = (nEntradas-count);
+printf("\n\nNúmero de Page Faults = %d\n", count);
+printf("Número Hits = %d\n ",hits);
+printf("Hit ratio = %.2f porciento \n",((float)hits/(float)nEntradas));
+                       
+}//end of FIFO
+
+int findLRU(int time[], int n){
+	int i, minimum = time[0], pos = 0;
+ 
+	for(i = 1; i < n; ++i){
+		if(time[i] < minimum){
+			minimum = time[i];
+			pos = i;
+		}
+	}
+	
+	return pos;
+}//end of findLRU
+
+void LRU(int nEntradas, char rString[], int nFrames){
+int  frames[10], pages[1024], counter = 0, time[10], flag1, flag2, i, j, pos, faults = 0;
+
+for(int m = 0; m<strlen(rString);m++){
+  pages[m] = (rString[m]);
+}
+printf("ref string\t page frames\n");
+for(i = 0; i < nFrames; ++i){
+    frames[i] = -1;
+  }
+  
+  for(i = 0; i < nEntradas; ++i){
+    flag1 = flag2 = 0;
+    
+    for(j = 0; j < nFrames; ++j){
+      if(frames[j] == pages[i]){
+        counter++;
+        time[j] = counter;
+        flag1 = flag2 = 1;
+        break;
+      }
+    }
+    
+    if(flag1 == 0){
+    for(j = 0; j < nFrames; ++j){
+        if(frames[j] == -1){
+          counter++;
+          faults++;
+          frames[j] = pages[i];
+          time[j] = counter;
+          flag2 = 1;
+          break;
+        }
+      }	
+    }
+    
+    if(flag2 == 0){
+      pos = findLRU(time, nFrames);
+      counter++;
+      faults++;
+      frames[pos] = pages[i];
+      time[pos] = counter;
+    }
+    
+    printf("\n");
+    printf("\t %c\t\t",pages[i]);
+    for(j = 0; j < nFrames; ++j){
+      printf("%c\t", frames[j]);
+    }
+}
+int hits = (nEntradas-faults);
+printf("\n\nNúmero de Page Faults = %d\n", faults);
+printf("Número Hits = %d\n ",hits);
+printf("Hit ratio =  %.2f porciento \n",((float)hits/(float)nEntradas));
+}//end of LRU
+
+void OPTIMAL(int nEntradas, char rString[], int nFrames){
+int  frames[10], pages[30], temp[10], flag1, flag2, flag3, i, j, k, pos, max, faults = 0;
+
+for(int m = 0; m<strlen(rString);m++){
+  pages[m] = (rString[m]);
+}
+
+for(i = 0; i < nFrames; ++i){
+    frames[i] = -1;
+}
+
+
+printf("ref string\t page frames\n");
+
+for(i = 0; i < nEntradas; ++i){
+    flag1 = flag2 = 0;
+    
+    for(j = 0; j < nFrames; ++j){
+        if(frames[j] == pages[i]){
+                flag1 = flag2 = 1;
+                break;
+            }
+    }
+    
+    if(flag1 == 0){
+        for(j = 0; j < nFrames; ++j){
+            if(frames[j] == -1){
+                faults++;
+                frames[j] = pages[i];
+                flag2 = 1;
+                break;
+            }
+        }    
+    }
+    
+    if(flag2 == 0){
+      flag3 =0;
+      
+        for(j = 0; j < nFrames; ++j){
+          temp[j] = -1;
+          
+          for(k = i + 1; k < nEntradas; ++k){
+            if(frames[j] == pages[k]){
+              temp[j] = k;
+              break;
+            }
+          }
+        }
+        
+        for(j = 0; j < nFrames; ++j){
+          if(temp[j] == -1){
+            pos = j;
+            flag3 = 1;
+            break;
+          }
+        }
+        
+        if(flag3 ==0){
+          max = temp[0];
+          pos = 0;
+          
+          for(j = 1; j < nFrames; ++j){
+            if(temp[j] > max){
+              max = temp[j];
+              pos = j;
+            }
+          }            	
+        }
+  
+  frames[pos] = pages[i];
+  faults++;
+    }
+    
+    printf("\n");
+    printf("\t %c\t\t",pages[i]);
+    for(j = 0; j < nFrames; ++j){
+        printf("%c\t", frames[j]);
+    }
+}
+int hits = (nEntradas-faults);
+printf("\n\n Número de Page Faults = %d\n", faults);
+printf("Número de Hits = %d\n ",hits);
+printf("Hit ratio = %.2f porciento \n",((float)hits/(float)nEntradas));
+
+}//end of optimal
+void calculoDirecciones(char las[],char pas[],char Loffset[],char pname[], char Lpsize[],char pref[],char algoritmo[], char pageframe[]){ //Función para calcular el Logical Address Structure, Physical Address, Offset and size page table
 
 	char numero[100] ="" ;
   char sufijo[100] = "";
@@ -116,6 +310,7 @@ void calculoDirecciones(char las[],char pas[],char Loffset[], char Lpsize[],char
   int bits = calcularBits(atoi(numero),sufijo);
   int offset = calcularBits(atoi(numOffset),sufijoOffset);
   int bPAS = calcularBits(atoi(numPAS),sufijoPAS);  
+  printf("\n\n!PAGE REPLACEMENT FOT THE PROCCESS: %s--------------!\n\n",pname);
   printf("\n\n!--------------DIRECCIÓN LÓGICA DE MEMORIA--------------!\n\n");
   printf("El tamaño de la dirección virtual es de %s --> %d bits \n",las, bits);
   printf("El tamaño del offset es: %d\n", offset);
@@ -135,7 +330,7 @@ void calculoDirecciones(char las[],char pas[],char Loffset[], char Lpsize[],char
   
   long nof = pow(2,(bPAS - offset));
   printf("Máximo número de frames en la memoria física 2x10^%d = %ld frames \n",(bPAS - offset),nof);
-  
+  int frames = 4;
   
   printf("\n\n!--------------TAMAÑO DE LA TABLA DE PÁGINA--------------!\n\n");
   
@@ -163,6 +358,11 @@ void calculoDirecciones(char las[],char pas[],char Loffset[], char Lpsize[],char
   printf("Reference String: [ %s ]\n",rString);
 
   printf("\n\n!--------------PAGE TABLE OUTPUT --------------!\n\n");
+  
+
+  FIFO(strlen(rString),rString,frames);
+  LRU(strlen(rString),rString,frames);
+  OPTIMAL(strlen(rString),rString,frames);
 
 
 }//End of calculoDirecciones
@@ -170,21 +370,28 @@ void calculoDirecciones(char las[],char pas[],char Loffset[], char Lpsize[],char
 
 
 
-
-
 int main(int argc, char** argv){
 	
-	FILE *fp;
+	if (argc != 2){
+	 printf ("usage: main FileDirectory [./FILE...]\n");
+	 return 0;
+	}
 
- 		
+ 	  printf("\n \n \n*******************************************************");
+  printf(" \n \t***Main & Virtual Memory**");
+  printf("\n \n \t***Autor:    Renzo Loor***");
+  printf("\n*******************************************************\n");
+
  	char comentario1[LIMITE]; char LAS[LIMITE];
 	char PAS[LIMITE]; char pagesize[LIMITE];
 	char comentario2[LIMITE]; char pname[LIMITE];
 	char psize[LIMITE]; char pref[LIMITE];
 	char algoritmo[LIMITE]; char pageframes[LIMITE];
 
-
-	fp = fopen ( "archivo.txt", "rt" );  
+	FILE *fp;
+	fp = fopen (argv[1],"rt");  
+	printf("arg: %s",argv[1]);
+      
       
 	if (fp == NULL)
         {
@@ -203,6 +410,8 @@ int main(int argc, char** argv){
     	    	fgets (pref, LIMITE, fp);
     	    	fgets (algoritmo, LIMITE, fp);
 	    	fgets (pageframes, LIMITE, fp);
+
+	
 		
 		
 
@@ -211,7 +420,9 @@ int main(int argc, char** argv){
         fclose(fp);
 
 /** Variables necesarias para el cálculo**/
+
 	
+
 	split(LAS);
 	split(PAS);
 	split(pagesize);
@@ -221,13 +432,8 @@ int main(int argc, char** argv){
 	split(algoritmo);
 	split(pageframes);
 	
-	printf("%s \n",LAS);	
-	printf("%s \n",PAS);	
-	printf("%s \n",pagesize);	
-	printf("%s \n",pref);
-
-
-	calculoDirecciones(LAS,PAS,pagesize,psize,pref);
+	
+	calculoDirecciones(LAS,PAS,pagesize,pname,psize,pref,algoritmo,pageframes);
 
 	return 0;
 
